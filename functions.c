@@ -13,6 +13,10 @@
 #include <limits.h>
 #include <alloca.h>
 #include <stdatomic.h>
+#include <sys/socket.h>
+#include <time.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 
 #include <linux/i2c.h>
@@ -196,11 +200,12 @@ void* monitorJoystick(void* args){
     }
     pthread_exit(0);
 }
-//
+
 void* printData(void* args){
     threadController* threadData = (threadController*) args;
     while(threadData->programRunning){
-        sleep(0.2);
+        printf("M%d %dbpm vol:%d Audio[] Accel\n",threadData->mode,threadData->tempo,threadData->volume);
+        sleep(1);
     }
     pthread_exit(0);
 }
@@ -209,7 +214,9 @@ void* monitorAccelerometerX(void* args){
     threadController* threadData = (threadController*) args;
 
     unsigned char buffx[9];
-    memset(buffx,0,sizeof(buffx));
+    for(int i = 0; i < 9; i++){
+        buffx[i] = 0;
+    }
 
     while(threadData->programRunning){
        *buffx = readI2cReg(threadData->i2cFileDesc,0x28);
@@ -217,7 +224,6 @@ void* monitorAccelerometerX(void* args){
         int16_t x = (buffx[4] << 8) | (buffx[0]);
 
         if((x > 32000 || x < -32000)){
-            //threadData->hitX++;
             atomic_store(&threadData->hitX,1);
             sleepForMs(300);
         }
@@ -230,7 +236,9 @@ void* monitorAccelerometerY(void* args){
     threadController* threadData = (threadController*) args;
 
     unsigned char buffy[9];
-    memset(buffy,0,sizeof(buffy));
+        for(int i = 0; i < 9; i++){
+        buffy[i] = 0;
+    }
 
     while(threadData->programRunning){
        *buffy = readI2cReg(threadData->i2cFileDesc,0x2A);
@@ -238,7 +246,6 @@ void* monitorAccelerometerY(void* args){
         int16_t y = (buffy[4] << 8) | (buffy[0]);
 
         if((y > 32000 || y < -32000)){
-            //threadData->hitY++;
             atomic_store(&threadData->hitY,1);
             sleepForMs(300);
         }
@@ -251,7 +258,9 @@ void* monitorAccelerometerZ(void* args){
     threadController* threadData = (threadController*) args;
 
     unsigned char buffz[9];
-    memset(buffz,0,sizeof(buffz));
+    for(int i = 0; i < 9; i++){
+        buffz[i] = 0;
+    }
 
     while(threadData->programRunning){
        
@@ -356,6 +365,54 @@ void runCommand(char* command)
         printf(" exit code: %d\n", exitCode);
     }
 }
+
+//Continuously monitor port 12345 for UDP packets and respond to the following commands
+//help, count, get N, length, history, stop and a blank enter (actually a carriage return)
+//its fine to use string contains and reply "help me now!" with help answer
+//only lower case is fine
+//see assn for display example
+void* networkCommunication(void* args){
+
+    printf("Network Communication Thread Started\n Connect to me remotely at 'netcat -u 192.168.7.2 12345' and type 'help' for more info..\n");
+
+    threadController* threadData = (threadController*) args;
+
+    char recBuffer[65000];
+    char sendBuffer[65000];
+    char reSendBuffer[65000];
+    int reSendCondition = 0;
+    int listenfd;
+    unsigned int len;
+    struct sockaddr_in servaddr, cliaddr;
+    memset(&servaddr,0 , sizeof(servaddr));
+    listenfd = socket(AF_INET, SOCK_DGRAM, 0);
+    servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    servaddr.sin_port = htons(12345);
+    servaddr.sin_family = AF_INET;
+    int multiSendOccured = 0;
+
+    bind(listenfd, (struct sockaddr*) &servaddr, sizeof(servaddr));
+
+    len = sizeof(cliaddr);
+
+
+    while(threadData->programRunning) {
+
+        if(strstr(recBuffer,"length")){
+            sprintf(sendBuffer,"msg");
+            strcpy(reSendBuffer,recBuffer);
+            //return max size of history and current amount of samples in history
+        }
+        if(reSendCondition == 0 && !multiSendOccured){
+            if(sendto(listenfd,sendBuffer,64094,0,(struct sockaddr*) &cliaddr,len) == -1){
+                printf("Sending 'sendto' function returned error\n");
+            }
+        }
+        memset(&sendBuffer,0 , sizeof(sendBuffer));
+    }
+    pthread_exit(0);
+}
+
 
 void startProgram(threadController* threadArgument){
     //set mode to default
