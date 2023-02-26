@@ -3,6 +3,7 @@
 #include <pthread.h>
 #include <alsa/asoundlib.h>
 #include "audioMixer_template.h"
+#include <stdatomic.h>
 
 // File used for play-back:
 // If cross-compiling, must have this file available, via this relative path,
@@ -24,11 +25,11 @@ void Audio_playFile(snd_pcm_t *handle, wavedata_t *pWaveData);
 
 typedef struct threadController{
     //Hit on X
-    int hitX;
+    atomic_int hitX;
     //Hit on Y
-    int hitY;
+    atomic_int hitY;
     //Hit on Z
-    int hitZ;
+    atomic_int hitZ;
     //boolean int to control startup and shutdown of threads
     int programRunning;
     //array of thread ID's

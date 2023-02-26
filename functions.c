@@ -12,6 +12,7 @@
 #include <pthread.h>
 #include <limits.h>
 #include <alloca.h>
+#include <stdatomic.h>
 
 
 #include <linux/i2c.h>
@@ -215,9 +216,10 @@ void* monitorAccelerometerX(void* args){
        *(buffx + 4) = readI2cReg(threadData->i2cFileDesc,0x29);
         int16_t x = (buffx[4] << 8) | (buffx[0]);
 
-        if((x > 30000 || x < -30000)){
-            threadData->hitX = 1;
-            sleepForMs(200);
+        if((x > 32000 || x < -32000)){
+            //threadData->hitX++;
+            atomic_store(&threadData->hitX,1);
+            sleepForMs(300);
         }
         sleepForMs(10);
     }
@@ -235,9 +237,10 @@ void* monitorAccelerometerY(void* args){
        *(buffy + 4) = readI2cReg(threadData->i2cFileDesc,0x2B);
         int16_t y = (buffy[4] << 8) | (buffy[0]);
 
-        if((y > 30000 || y < -30000)){
-            threadData->hitY = 1;
-            sleepForMs(200);
+        if((y > 32000 || y < -32000)){
+            //threadData->hitY++;
+            atomic_store(&threadData->hitY,1);
+            sleepForMs(300);
         }
         sleepForMs(10);
     }
@@ -257,9 +260,10 @@ void* monitorAccelerometerZ(void* args){
         int16_t z = (buffz[4] << 8) | (buffz[0]);
 
 
-        if((z > 32000 || z < -30000)){
-            threadData->hitZ = 1;
-            sleepForMs(200);
+        if((z > 32000 || z < -32000)){
+            //threadData->hitZ++;
+            atomic_store(&threadData->hitZ,1);
+            sleepForMs(300);
         }
         sleepForMs(10);
     }
@@ -293,31 +297,35 @@ void* playSound(void* args){
         printf("Hit X\n");
         if(mode == 1){
             AudioMixer_queueSound(&sampleFile1);
-        } else{
+        } else if (mode == 2){
             AudioMixer_queueSound(&sampleFile4);
         }
-        threadData->hitX = 0;
+        //threadData->hitX = 0;
+        atomic_store(&threadData->hitX,0);
       }
       if(threadData->hitY){
         if(mode == 1){
             AudioMixer_queueSound(&sampleFile2);
-        } else{
+        } else if (mode == 2){
             AudioMixer_queueSound(&sampleFile5);
         }
         printf("Hit Y\n");
-        threadData->hitY = 0;
+        //threadData->hitY = 0;
+        atomic_store(&threadData->hitY,0);
       }
       if(threadData->hitZ){
         if(mode == 1){
             AudioMixer_queueSound(&sampleFile3);
-        } else{
+        } else if (mode == 2){
             AudioMixer_queueSound(&sampleFile6);
         }
         printf("Hit Z\n");
-        threadData->hitZ = 0;
+        //threadData->hitZ = 0;
+        atomic_store(&threadData->hitZ,0);
       }
       sleepForMs((60/threadData->tempo/2)*1000);
     }
+    
     AudioMixer_cleanup();
     AudioMixer_freeWaveFileData(&sampleFile1);
     AudioMixer_freeWaveFileData(&sampleFile2);
@@ -356,12 +364,15 @@ void startProgram(threadController* threadArgument){
     runCommand("config-pin p9_18 i2c");
 	runCommand("config-pin p9_17 i2c");
     threadArgument->i2cFileDesc = initI2cBus(I2CDRV_LINUX_BUS1, I2C_DEVICE_ADDRESS);
-    unsigned char outputValue = readI2cReg(threadArgument->i2cFileDesc,0x20);
+   // unsigned char outputValue = readI2cReg(threadArgument->i2cFileDesc,0x20);
     writeI2cReg(threadArgument->i2cFileDesc,REG_TURN_ON_ACCEL,0x00);
-    printf("Validating accelerometer memory value at 0x20 is set to 0x00 which is 'off', value = %u\n",outputValue);
+   //printf("Validating accelerometer memory value at 0x20 is set to 0x00 which is 'off', value = %u\n",outputValue);
     writeI2cReg(threadArgument->i2cFileDesc,REG_TURN_ON_ACCEL,0x27);
-    outputValue = readI2cReg(threadArgument->i2cFileDesc,0x20);
-    printf("Validating accelerometer memory value at 0x20 is set to 0x01 which is 'on', value = %u\n",outputValue);
+   // outputValue = readI2cReg(threadArgument->i2cFileDesc,0x20);
+   // printf("Validating accelerometer memory value at 0x20 is set to 0x01 which is 'on', value = %u\n",outputValue);
+   threadArgument->hitX = 0;
+   threadArgument->hitY = 0;
+   threadArgument->hitZ = 0;
 
     pthread_t tid;
     pthread_attr_t attr;
@@ -405,4 +416,13 @@ void waitForProgramEnd(threadController* threadArgument){
 
     //Wait for printing thread to join gracefully
     pthread_join(threadArgument->threadIDs[2],NULL);
+
+    //Wait for printing thread to join gracefully
+    pthread_join(threadArgument->threadIDs[3],NULL);
+
+    //Wait for printing thread to join gracefully
+    pthread_join(threadArgument->threadIDs[4],NULL);
+
+    //Wait for printing thread to join gracefully
+    pthread_join(threadArgument->threadIDs[5],NULL);
 }
