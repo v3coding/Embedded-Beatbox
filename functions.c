@@ -373,14 +373,10 @@ void runCommand(char* command)
 //see assn for display example
 void* networkCommunication(void* args){
 
-    printf("Network Communication Thread Started\n Connect to me remotely at 'netcat -u 192.168.7.2 12345' and type 'help' for more info..\n");
-
     threadController* threadData = (threadController*) args;
 
     char recBuffer[65000];
-    char sendBuffer[65000];
-    char reSendBuffer[65000];
-    int reSendCondition = 0;
+    char sendBuffer[100];
     int listenfd;
     unsigned int len;
     struct sockaddr_in servaddr, cliaddr;
@@ -389,7 +385,6 @@ void* networkCommunication(void* args){
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     servaddr.sin_port = htons(12345);
     servaddr.sin_family = AF_INET;
-    int multiSendOccured = 0;
 
     bind(listenfd, (struct sockaddr*) &servaddr, sizeof(servaddr));
 
@@ -398,17 +393,27 @@ void* networkCommunication(void* args){
 
     while(threadData->programRunning) {
 
-        if(strstr(recBuffer,"length")){
-            sprintf(sendBuffer,"msg");
-            strcpy(reSendBuffer,recBuffer);
-            //return max size of history and current amount of samples in history
-        }
-        if(reSendCondition == 0 && !multiSendOccured){
-            if(sendto(listenfd,sendBuffer,64094,0,(struct sockaddr*) &cliaddr,len) == -1){
-                printf("Sending 'sendto' function returned error\n");
-            }
-        }
-        memset(&sendBuffer,0 , sizeof(sendBuffer));
+        recvfrom(listenfd,recBuffer,sizeof(recBuffer),0,(struct sockaddr*) &cliaddr, &len);
+
+        printf("Got message %s\n",recBuffer);
+
+        sprintf(sendBuffer,"Volume : %d Tempo : %d Mode : %d",threadData->volume,threadData->tempo,threadData->mode);
+
+        sendto(listenfd,sendBuffer,99,0,(struct sockaddr*) &cliaddr,len);
+
+        memset(recBuffer,0,sizeof(recBuffer));
+
+        // if(strstr(recBuffer,"length")){
+        //     sprintf(sendBuffer,"msg");
+        //     strcpy(reSendBuffer,recBuffer);
+        //     //return max size of history and current amount of samples in history
+        // }
+        // if(reSendCondition == 0 && !multiSendOccured){
+        //     if(sendto(listenfd,sendBuffer,64094,0,(struct sockaddr*) &cliaddr,len) == -1){
+        //         printf("Sending 'sendto' function returned error\n");
+        //     }
+        // }
+        // memset(&sendBuffer,0 , sizeof(sendBuffer));
     }
     pthread_exit(0);
 }
@@ -459,6 +464,10 @@ void startProgram(threadController* threadArgument){
     pthread_create(&tid, &attr, monitorJoystick, threadArgument);
     threadArgument->threadIDs[5] = tid;
 
+    pthread_create(&tid, &attr, networkCommunication, threadArgument);
+    threadArgument->threadIDs[6] = tid;
+
+
     //Wait for threads to gracefully return
     waitForProgramEnd(threadArgument);
 }
@@ -482,4 +491,7 @@ void waitForProgramEnd(threadController* threadArgument){
 
     //Wait for printing thread to join gracefully
     pthread_join(threadArgument->threadIDs[5],NULL);
+
+    //Wait for printing thread to join gracefully
+    pthread_join(threadArgument->threadIDs[6],NULL);
 }
