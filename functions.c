@@ -28,12 +28,12 @@
 #define I2CDRV_LINUX_BUS2 "/dev/i2c-2"
 #define I2C_DEVICE_ADDRESS 0x18
 
-#define SOURCE_FILE1 "wave-files/100051__menegass__gui-drum-bd-hard.wav"
-#define SOURCE_FILE2 "wave-files/100066__menegass__gui-drum-tom-mid-hard.wav"
-#define SOURCE_FILE3 "wave-files/100061__menegass__gui-drum-splash-soft.wav"
-#define SOURCE_FILE4 "wave-files/100055__menegass__gui-drum-co.wav"
-#define SOURCE_FILE5 "wave-files/100066__menegass__gui-drum-tom-mid-hard.wav"
-#define SOURCE_FILE6 "wave-files/100065__menegass__gui-drum-tom-lo-soft.wav"
+#define SOURCE_FILE1 "beatbox-wav-files/100051__menegass__gui-drum-bd-hard.wav"
+#define SOURCE_FILE2 "beatbox-wav-files/100066__menegass__gui-drum-tom-mid-hard.wav"
+#define SOURCE_FILE3 "beatbox-wav-files/100061__menegass__gui-drum-splash-soft.wav"
+#define SOURCE_FILE4 "beatbox-wav-files/100055__menegass__gui-drum-co.wav"
+#define SOURCE_FILE5 "beatbox-wav-files/100066__menegass__gui-drum-tom-mid-hard.wav"
+#define SOURCE_FILE6 "beatbox-wav-files/100065__menegass__gui-drum-tom-lo-soft.wav"
 
 #define REG_TURN_ON_ACCEL 0x20
 #define READADDR 0xA8
@@ -195,8 +195,7 @@ void* monitorJoystick(void* args){
             printf("Mode : %d\n",threadData->mode);
             sleepForMs(300);
         }
-        
-        sleepForMs(20);
+        sleepForMs(10);
     }
     pthread_exit(0);
 }
@@ -303,7 +302,7 @@ void* playSound(void* args){
     while(threadData->programRunning){
         int mode = threadData->mode;
       if(threadData->hitX){
-        printf("Hit X\n");
+        //printf("Hit X\n");
         if(mode == 1){
             AudioMixer_queueSound(&sampleFile1);
         } else if (mode == 2){
@@ -318,7 +317,7 @@ void* playSound(void* args){
         } else if (mode == 2){
             AudioMixer_queueSound(&sampleFile5);
         }
-        printf("Hit Y\n");
+        //printf("Hit Y\n");
         //threadData->hitY = 0;
         atomic_store(&threadData->hitY,0);
       }
@@ -328,10 +327,42 @@ void* playSound(void* args){
         } else if (mode == 2){
             AudioMixer_queueSound(&sampleFile6);
         }
-        printf("Hit Z\n");
+        //printf("Hit Z\n");
         //threadData->hitZ = 0;
         atomic_store(&threadData->hitZ,0);
       }
+
+        if(threadData->playsound1){
+           AudioMixer_queueSound(&sampleFile1);
+           atomic_store(&threadData->playsound1,0); 
+        }
+
+        if(threadData->playsound2){
+           AudioMixer_queueSound(&sampleFile2);
+           atomic_store(&threadData->playsound2,0); 
+        }
+
+        if(threadData->playsound3){
+           AudioMixer_queueSound(&sampleFile3);
+           atomic_store(&threadData->playsound3,0); 
+        }
+
+        if(threadData->playsound4){
+           AudioMixer_queueSound(&sampleFile4);
+           atomic_store(&threadData->playsound4,0); 
+        }
+
+        if(threadData->playsound5){
+           AudioMixer_queueSound(&sampleFile5);
+           atomic_store(&threadData->playsound5,0); 
+        }
+
+        if(threadData->playsound6){
+           AudioMixer_queueSound(&sampleFile6);
+           atomic_store(&threadData->playsound6,0); 
+        }
+
+
       sleepForMs((60/threadData->tempo/2)*1000);
     }
     
@@ -401,7 +432,82 @@ void* networkCommunication(void* args){
 
         sendto(listenfd,sendBuffer,99,0,(struct sockaddr*) &cliaddr,len);
 
+        if(strstr(recBuffer,"mode")){
+            if(threadData->mode == 3){
+                threadData->mode = 1;
+            }
+            else{
+                threadData->mode++;
+            }  
+        }
+
+        if(strstr(recBuffer,"volume+")){
+            if(threadData->volume < 95){
+                threadData->volume += 5;
+            }
+            else{
+                threadData->volume = 100;
+            } 
+            AudioMixer_setVolume(threadData->volume); 
+        }
+
+        if(strstr(recBuffer,"volume-")){
+            if(threadData->volume > 5){
+                threadData->volume -= 5;
+            }
+            else{
+                threadData->volume = 0;
+            }
+            AudioMixer_setVolume(threadData->volume);  
+        }
+
+        if(strstr(recBuffer,"tempo+")){
+            if(threadData->tempo > 45){
+                threadData->tempo -= 5;
+            }
+            else{
+                threadData->tempo = 40;
+            }  
+        }
+
+        if(strstr(recBuffer,"tempo-")){
+            if(threadData->tempo < 295){
+                threadData->tempo += 5;
+            }
+            else{
+                threadData->tempo = 300;
+            }  
+        }
+
+        if(strstr(recBuffer,"sound1")){
+            atomic_store(&threadData->playsound1,1);    
+        }
+
+        if(strstr(recBuffer,"sound2")){
+            atomic_store(&threadData->playsound2,1);   
+        }
+
+        if(strstr(recBuffer,"sound3")){
+            atomic_store(&threadData->playsound3,1);    
+        }
+
+        if(strstr(recBuffer,"sound4")){
+            atomic_store(&threadData->playsound4,1);
+        } 
+
+        if(strstr(recBuffer,"sound5")){
+            atomic_store(&threadData->playsound5,1);    
+        }
+
+        if(strstr(recBuffer,"sound6")){
+            atomic_store(&threadData->playsound6,1);     
+        }  
+
+        if(strstr(recBuffer,"shutdown")){
+            threadData->programRunning = 0;     
+        }    
         memset(recBuffer,0,sizeof(recBuffer));
+    }
 
         // if(strstr(recBuffer,"length")){
         //     sprintf(sendBuffer,"msg");
@@ -414,7 +520,7 @@ void* networkCommunication(void* args){
         //     }
         // }
         // memset(&sendBuffer,0 , sizeof(sendBuffer));
-    }
+
     pthread_exit(0);
 }
 
@@ -435,6 +541,12 @@ void startProgram(threadController* threadArgument){
    threadArgument->hitX = 0;
    threadArgument->hitY = 0;
    threadArgument->hitZ = 0;
+   threadArgument->playsound1 = 0;
+   threadArgument->playsound2 = 0;
+   threadArgument->playsound3 = 0;
+   threadArgument->playsound4 = 0;
+   threadArgument->playsound5 = 0;
+   threadArgument->playsound6 = 0;
 
     pthread_t tid;
     pthread_attr_t attr;

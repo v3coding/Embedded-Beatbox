@@ -42,6 +42,13 @@ typedef struct threadController{
     int volume;
     //tempo
     int tempo;
+    // play sounds individually
+    atomic_int playsound1;
+    atomic_int playsound2;
+    atomic_int playsound3;
+    atomic_int playsound4;
+    atomic_int playsound5;
+    atomic_int playsound6;
 } threadController;
 
 void startProgram(threadController* threadArgument);
