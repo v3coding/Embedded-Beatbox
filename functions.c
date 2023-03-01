@@ -154,8 +154,12 @@ void* monitorJoystick(void* args){
 
 
         if(readJoystick(1)){
-            if(threadData->volume < 100){
-                threadData->volume += 1;
+            if(threadData->volume < 95){
+                threadData->volume += 5;
+                AudioMixer_setVolume(threadData->volume);
+            }
+            else{
+                threadData->volume = 100;
                 AudioMixer_setVolume(threadData->volume);
             }
             printf("Volume : %d\n",threadData->volume);
@@ -163,8 +167,12 @@ void* monitorJoystick(void* args){
         }
 
         if(readJoystick(2)){
-            if(threadData->volume > 0){
-                threadData->volume -= 1;
+            if(threadData->volume > 5){
+                threadData->volume -= 5;
+                AudioMixer_setVolume(threadData->volume);
+            }
+            else{
+                threadData->volume = 0;
                 AudioMixer_setVolume(threadData->volume);
             }
             printf("Volume : %d\n",threadData->volume);
@@ -172,16 +180,21 @@ void* monitorJoystick(void* args){
         }
 
         if(readJoystick(3)){
-            if(threadData->tempo > 40){
-                threadData->tempo--;
+            if(threadData->tempo > 45){
+                threadData->tempo -= 5;
+            }
+            else{
+                threadData->tempo = 40;
             }
             printf("Tempo : %d\n",threadData->tempo);
             sleepForMs(150);
         }
 
         if(readJoystick(4)){
-            if(threadData->tempo < 300){
-                threadData->tempo++;
+            if(threadData->tempo < 295){
+                threadData->tempo -= 5;
+            }else{
+                threadData->tempo = 300;
             }
             printf("Tempo : %d\n",threadData->tempo);
             sleepForMs(150);
