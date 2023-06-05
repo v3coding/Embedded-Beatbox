@@ -13,7 +13,3 @@ int main(){
     free(threadArguments);
     return 0;
 }
-
-// int main(){
-//     AudioMixer_init();
-// }

@@ -1,0 +1,18 @@
+Embedded BeatBox Application for the Beagle Bone Green
+
+Written almost entirely by me with the exception of one Audio Mixer function to set the Volume
+
+Guided by Brian Frasers CMPT 433 course
+
+This BeatBox Application monitors the BBG's internal accelerometer to detect sharp hand movements,
+like a drummer swinging a drumstick, and turns these sharp hand movements in to sounds played by our BeatBox
+
+It uses the AUX for output, and can play multiple WAV files at once by utilizing a mixer to add the sounds together
+
+It also communicates over UDP on the network and can be issued commands remotely
+
+The application is threaded, and uses atomics to handle inter process synchronization
+
+The tempo that the sounds are played is variable, as is the volume
+
+These features can be actuated via the Joystick or via UDP packets

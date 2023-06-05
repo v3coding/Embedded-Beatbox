@@ -74,9 +74,7 @@ void configureInput(){
 }
 
 int readJoystick(int joystick){
-    //1 is up, 2 is down
     FILE *pFile;
-
     if(joystick == 1){
         pFile = fopen("/sys/class/gpio/gpio26/value", "r");
     }
@@ -94,8 +92,6 @@ int readJoystick(int joystick){
     }
     char buff[1024];
     fgets(buff, 1024, pFile);
-    //printf("Read : '%s'",buff);
-    //printf("First Bit = %c\n",buff[0]);
     fclose(pFile);
     if(buff[0] == '0'){
         return 1;
@@ -143,16 +139,11 @@ static unsigned char readI2cReg(int i2cFileDesc, unsigned char regAddr){
 
 void* monitorJoystick(void* args){
     configureInput();
-
     threadController* threadData = (threadController*) args;
-
     threadData->volume = 80;
     AudioMixer_setVolume(threadData->volume);
     threadData->tempo = 120;
-
     while(threadData->programRunning){
-
-
         if(readJoystick(1)){
             if(threadData->volume < 95){
                 threadData->volume += 5;
@@ -165,7 +156,6 @@ void* monitorJoystick(void* args){
             printf("Volume : %d\n",threadData->volume);
             sleepForMs(150);
         }
-
         if(readJoystick(2)){
             if(threadData->volume > 5){
                 threadData->volume -= 5;
@@ -178,7 +168,6 @@ void* monitorJoystick(void* args){
             printf("Volume : %d\n",threadData->volume);
             sleepForMs(150);
         }
-
         if(readJoystick(3)){
             if(threadData->tempo > 45){
                 threadData->tempo -= 5;
@@ -189,7 +178,6 @@ void* monitorJoystick(void* args){
             printf("Tempo : %d\n",threadData->tempo);
             sleepForMs(150);
         }
-
         if(readJoystick(4)){
             if(threadData->tempo < 295){
                 threadData->tempo -= 5;
@@ -224,12 +212,10 @@ void* printData(void* args){
 
 void* monitorAccelerometerX(void* args){
     threadController* threadData = (threadController*) args;
-
     unsigned char buffx[9];
     for(int i = 0; i < 9; i++){
         buffx[i] = 0;
     }
-
     while(threadData->programRunning){
        *buffx = readI2cReg(threadData->i2cFileDesc,0x28);
        *(buffx + 4) = readI2cReg(threadData->i2cFileDesc,0x29);
@@ -246,12 +232,10 @@ void* monitorAccelerometerX(void* args){
 
 void* monitorAccelerometerY(void* args){
     threadController* threadData = (threadController*) args;
-
     unsigned char buffy[9];
         for(int i = 0; i < 9; i++){
         buffy[i] = 0;
     }
-
     while(threadData->programRunning){
        *buffy = readI2cReg(threadData->i2cFileDesc,0x2A);
        *(buffy + 4) = readI2cReg(threadData->i2cFileDesc,0x2B);
@@ -268,19 +252,14 @@ void* monitorAccelerometerY(void* args){
 
 void* monitorAccelerometerZ(void* args){
     threadController* threadData = (threadController*) args;
-
     unsigned char buffz[9];
     for(int i = 0; i < 9; i++){
         buffz[i] = 0;
     }
-
     while(threadData->programRunning){
-       
        *buffz = readI2cReg(threadData->i2cFileDesc,0x2C);
        *(buffz + 4) = readI2cReg(threadData->i2cFileDesc,0x2D);
         int16_t z = (buffz[4] << 8) | (buffz[0]);
-
-
         if((z > 32000 || z < -32000)){
             //threadData->hitZ++;
             atomic_store(&threadData->hitZ,1);
@@ -293,14 +272,12 @@ void* monitorAccelerometerZ(void* args){
 
 void* playSound(void* args){
     threadController* threadData = (threadController*) args;
-
     wavedata_t sampleFile1;
     wavedata_t sampleFile2;
     wavedata_t sampleFile3;
     wavedata_t sampleFile4;
     wavedata_t sampleFile5;
     wavedata_t sampleFile6;
-
     AudioMixer_init();
     AudioMixer_readWaveFileIntoMemory(SOURCE_FILE1, &sampleFile1);
     AudioMixer_readWaveFileIntoMemory(SOURCE_FILE2, &sampleFile2);
@@ -308,20 +285,15 @@ void* playSound(void* args){
     AudioMixer_readWaveFileIntoMemory(SOURCE_FILE4, &sampleFile4);
     AudioMixer_readWaveFileIntoMemory(SOURCE_FILE5, &sampleFile5);
     AudioMixer_readWaveFileIntoMemory(SOURCE_FILE6, &sampleFile6);
-
-
-
-
     while(threadData->programRunning){
         int mode = threadData->mode;
       if(threadData->hitX){
-        //printf("Hit X\n");
+        printf("Hit X\n");
         if(mode == 1){
             AudioMixer_queueSound(&sampleFile1);
         } else if (mode == 2){
             AudioMixer_queueSound(&sampleFile4);
         }
-        //threadData->hitX = 0;
         atomic_store(&threadData->hitX,0);
       }
       if(threadData->hitY){
@@ -330,8 +302,7 @@ void* playSound(void* args){
         } else if (mode == 2){
             AudioMixer_queueSound(&sampleFile5);
         }
-        //printf("Hit Y\n");
-        //threadData->hitY = 0;
+        printf("Hit Y\n");
         atomic_store(&threadData->hitY,0);
       }
       if(threadData->hitZ){
@@ -340,45 +311,35 @@ void* playSound(void* args){
         } else if (mode == 2){
             AudioMixer_queueSound(&sampleFile6);
         }
-        //printf("Hit Z\n");
-        //threadData->hitZ = 0;
+        printf("Hit Z\n");
         atomic_store(&threadData->hitZ,0);
       }
-
         if(threadData->playsound1){
            AudioMixer_queueSound(&sampleFile1);
            atomic_store(&threadData->playsound1,0); 
         }
-
         if(threadData->playsound2){
            AudioMixer_queueSound(&sampleFile2);
            atomic_store(&threadData->playsound2,0); 
         }
-
         if(threadData->playsound3){
            AudioMixer_queueSound(&sampleFile3);
            atomic_store(&threadData->playsound3,0); 
         }
-
         if(threadData->playsound4){
            AudioMixer_queueSound(&sampleFile4);
            atomic_store(&threadData->playsound4,0); 
         }
-
         if(threadData->playsound5){
            AudioMixer_queueSound(&sampleFile5);
            atomic_store(&threadData->playsound5,0); 
         }
-
         if(threadData->playsound6){
            AudioMixer_queueSound(&sampleFile6);
            atomic_store(&threadData->playsound6,0); 
         }
-
-
       sleepForMs((60/threadData->tempo/2)*1000);
     }
-    
     AudioMixer_cleanup();
     AudioMixer_freeWaveFileData(&sampleFile1);
     AudioMixer_freeWaveFileData(&sampleFile2);
@@ -391,17 +352,12 @@ void* playSound(void* args){
 
 void runCommand(char* command)
 {
-    // Execute the shell command (output into pipe)
     FILE *pipe = popen(command, "r");
-    // Ignore output of the command; but consume it
-    // so we don't get an error when closing the pipe.
     char buffer[1024];
     while (!feof(pipe) && !ferror(pipe)) {
     if (fgets(buffer, sizeof(buffer), pipe) == NULL)
     break;
-    // printf("--> %s", buffer); // Uncomment for debugging
     }
-    // Get the exit code from the pipe; non-zero is an error:
     int exitCode = WEXITSTATUS(pclose(pipe));
     if (exitCode != 0) {
         perror("Unable to execute command:");
@@ -409,16 +365,8 @@ void runCommand(char* command)
         printf(" exit code: %d\n", exitCode);
     }
 }
-
-//Continuously monitor port 12345 for UDP packets and respond to the following commands
-//help, count, get N, length, history, stop and a blank enter (actually a carriage return)
-//its fine to use string contains and reply "help me now!" with help answer
-//only lower case is fine
-//see assn for display example
 void* networkCommunication(void* args){
-
     threadController* threadData = (threadController*) args;
-
     char recBuffer[65000];
     char sendBuffer[100];
     int listenfd;
@@ -429,22 +377,13 @@ void* networkCommunication(void* args){
     servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
     servaddr.sin_port = htons(12345);
     servaddr.sin_family = AF_INET;
-
     bind(listenfd, (struct sockaddr*) &servaddr, sizeof(servaddr));
-
     len = sizeof(cliaddr);
-
-
     while(threadData->programRunning) {
-
         recvfrom(listenfd,recBuffer,sizeof(recBuffer),0,(struct sockaddr*) &cliaddr, &len);
-
         printf("Got message %s\n",recBuffer);
-
         sprintf(sendBuffer,"Volume : %d Tempo : %d Mode : %d",threadData->volume,threadData->tempo,threadData->mode);
-
         sendto(listenfd,sendBuffer,99,0,(struct sockaddr*) &cliaddr,len);
-
         if(strstr(recBuffer,"mode")){
             if(threadData->mode == 3){
                 threadData->mode = 1;
@@ -453,7 +392,6 @@ void* networkCommunication(void* args){
                 threadData->mode++;
             }  
         }
-
         if(strstr(recBuffer,"volume+")){
             if(threadData->volume < 95){
                 threadData->volume += 5;
@@ -463,7 +401,6 @@ void* networkCommunication(void* args){
             } 
             AudioMixer_setVolume(threadData->volume); 
         }
-
         if(strstr(recBuffer,"volume-")){
             if(threadData->volume > 5){
                 threadData->volume -= 5;
@@ -473,7 +410,6 @@ void* networkCommunication(void* args){
             }
             AudioMixer_setVolume(threadData->volume);  
         }
-
         if(strstr(recBuffer,"tempo+")){
             if(threadData->tempo > 45){
                 threadData->tempo -= 5;
@@ -482,7 +418,6 @@ void* networkCommunication(void* args){
                 threadData->tempo = 40;
             }  
         }
-
         if(strstr(recBuffer,"tempo-")){
             if(threadData->tempo < 295){
                 threadData->tempo += 5;
@@ -491,108 +426,71 @@ void* networkCommunication(void* args){
                 threadData->tempo = 300;
             }  
         }
-
         if(strstr(recBuffer,"sound1")){
             atomic_store(&threadData->playsound1,1);    
         }
-
         if(strstr(recBuffer,"sound2")){
             atomic_store(&threadData->playsound2,1);   
         }
-
         if(strstr(recBuffer,"sound3")){
             atomic_store(&threadData->playsound3,1);    
         }
-
         if(strstr(recBuffer,"sound4")){
             atomic_store(&threadData->playsound4,1);
         } 
-
         if(strstr(recBuffer,"sound5")){
             atomic_store(&threadData->playsound5,1);    
         }
-
         if(strstr(recBuffer,"sound6")){
             atomic_store(&threadData->playsound6,1);     
         }  
-
         if(strstr(recBuffer,"shutdown")){
             threadData->programRunning = 0;     
         }    
         memset(recBuffer,0,sizeof(recBuffer));
     }
-
-        // if(strstr(recBuffer,"length")){
-        //     sprintf(sendBuffer,"msg");
-        //     strcpy(reSendBuffer,recBuffer);
-        //     //return max size of history and current amount of samples in history
-        // }
-        // if(reSendCondition == 0 && !multiSendOccured){
-        //     if(sendto(listenfd,sendBuffer,64094,0,(struct sockaddr*) &cliaddr,len) == -1){
-        //         printf("Sending 'sendto' function returned error\n");
-        //     }
-        // }
-        // memset(&sendBuffer,0 , sizeof(sendBuffer));
-
     pthread_exit(0);
 }
 
 
 void startProgram(threadController* threadArgument){
-    //set mode to default
     threadArgument->mode = 1;
-    //Configure I2C Pins
     runCommand("config-pin p9_18 i2c");
 	runCommand("config-pin p9_17 i2c");
     threadArgument->i2cFileDesc = initI2cBus(I2CDRV_LINUX_BUS1, I2C_DEVICE_ADDRESS);
-   // unsigned char outputValue = readI2cReg(threadArgument->i2cFileDesc,0x20);
     writeI2cReg(threadArgument->i2cFileDesc,REG_TURN_ON_ACCEL,0x00);
-   //printf("Validating accelerometer memory value at 0x20 is set to 0x00 which is 'off', value = %u\n",outputValue);
     writeI2cReg(threadArgument->i2cFileDesc,REG_TURN_ON_ACCEL,0x27);
-   // outputValue = readI2cReg(threadArgument->i2cFileDesc,0x20);
-   // printf("Validating accelerometer memory value at 0x20 is set to 0x01 which is 'on', value = %u\n",outputValue);
-   threadArgument->hitX = 0;
-   threadArgument->hitY = 0;
-   threadArgument->hitZ = 0;
-   threadArgument->playsound1 = 0;
-   threadArgument->playsound2 = 0;
-   threadArgument->playsound3 = 0;
-   threadArgument->playsound4 = 0;
-   threadArgument->playsound5 = 0;
-   threadArgument->playsound6 = 0;
-
+    threadArgument->hitX = 0;
+    threadArgument->hitY = 0;
+    threadArgument->hitZ = 0;
+    threadArgument->playsound1 = 0;
+    threadArgument->playsound2 = 0;
+    threadArgument->playsound3 = 0;
+    threadArgument->playsound4 = 0;
+    threadArgument->playsound5 = 0;
+    threadArgument->playsound6 = 0;
     pthread_t tid;
     pthread_attr_t attr;
     pthread_attr_init(&attr);
-    //Set "Running" boolean to indicate program is to run
     threadArgument->programRunning = 1;
-
     //Start acceleromter monitoring threads
     pthread_create(&tid, &attr, monitorAccelerometerX, threadArgument);
     threadArgument->threadIDs[0] = tid;
-
     pthread_create(&tid, &attr, monitorAccelerometerY, threadArgument);
     threadArgument->threadIDs[1] = tid;
-
     pthread_create(&tid, &attr, monitorAccelerometerZ, threadArgument);
     threadArgument->threadIDs[2] = tid;
-
     //Start data printing thread
     pthread_create(&tid, &attr, printData, threadArgument);
     threadArgument->threadIDs[3] = tid;
-
     //play sound thread
     pthread_create(&tid, &attr, playSound, threadArgument);
     threadArgument->threadIDs[4] = tid;
-
     //monitorJoystick thread
     pthread_create(&tid, &attr, monitorJoystick, threadArgument);
     threadArgument->threadIDs[5] = tid;
-
     pthread_create(&tid, &attr, networkCommunication, threadArgument);
     threadArgument->threadIDs[6] = tid;
-
-
     //Wait for threads to gracefully return
     waitForProgramEnd(threadArgument);
 }
